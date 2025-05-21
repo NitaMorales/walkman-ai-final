@@ -1,26 +1,37 @@
-document.getElementById('playButton').addEventListener('click', async () => {
-  const punkAudio = new Audio('punk.mp3');
-  punkAudio.volume = 0.15;
-  punkAudio.play();
+const loop = new Audio('loopIntro.mp3');
+const punk = new Audio('punk.mp3');
 
-  const loopIntro = new Audio('loopIntro.mp3');
-  loopIntro.loop = true;
-  loopIntro.volume = 1;
-  loopIntro.play();
+const playButton = document.getElementById('playButton');
+let iaAudio = null;
 
-  // Pedimos la respuesta IA mientras el loop está sonando
-  const response = await fetch('/api/bienvenida');
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const iaVoice = new Audio(url);
-  iaVoice.volume = 1;
+playButton.addEventListener('click', async () => {
+  playButton.disabled = true;
 
-  // Cuando la voz IA esté lista, paramos el loop y la música
-  loopIntro.pause();
-  loopIntro.currentTime = 0;
+  // Inicia el loop de bienvenida
+  loop.loop = true;
+  loop.volume = 0.2;
+  await loop.play();
 
-  punkAudio.pause();
-  punkAudio.currentTime = 0;
+  try {
+    // Llama a la API que genera la voz IA
+    const response = await fetch('/api/bienvenida');
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
 
-  iaVoice.play();
+    // Detiene el loop una vez que la IA responde
+    loop.pause();
+
+    iaAudio = new Audio(audioUrl);
+    iaAudio.play();
+
+    // Cuando la IA termina de hablar, inicia la música
+    iaAudio.onended = () => {
+      punk.volume = 0.5;
+      punk.play();
+    };
+  } catch (err) {
+    console.error('Error al obtener audio IA:', err);
+    loop.pause();
+    playButton.disabled = false;
+  }
 });
