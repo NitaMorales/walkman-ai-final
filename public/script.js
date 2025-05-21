@@ -1,33 +1,37 @@
-const audioElement = new Audio();
-const loopIntro = new Audio('loopIntro.mp3');
-const punk = new Audio('punk.mp3');
+const loopAudio = new Audio('loopIntro.mp3');
+const punkAudio = new Audio('punk.mp3');
+loopAudio.loop = true;
+punkAudio.loop = true;
+punkAudio.volume = 0.3; // 🔉 volumen más bajo
 
-// Para que ambos audios puedan reproducirse automáticamente
-loopIntro.loop = true;
-punk.loop = false;
+const playButton = document.getElementById('playButton');
+const aiVoice = new Audio();
 
-document.getElementById('playButton').addEventListener('click', () => {
-  // Inicia loop introductorio
-  loopIntro.play();
+let iaActivated = false;
 
-  // Fetch a la IA para generar bienvenida
-  fetch('/api/bienvenida')
-    .then(response => response.json())
-    .then(data => {
-      // Detener ambos audios cuando llega la voz de la IA
-      loopIntro.pause();
-      loopIntro.currentTime = 0;
-      punk.pause();
-      punk.currentTime = 0;
+playButton.addEventListener('click', async () => {
+  if (iaActivated) return;
 
-      // Reproduce la bienvenida generada por Eleven Labs
-      audioElement.src = data.audioUrl;
-      audioElement.play();
-    })
-    .catch(err => {
-      console.error('Error:', err);
-    });
+  iaActivated = true;
+  loopAudio.play();
+  punkAudio.play();
 
-  // Mientras espera la respuesta, empieza la música punk
-  punk.play();
+  // Llama a la IA
+  try {
+    const response = await fetch('/api/bienvenida');
+    const blob = await response.blob();
+    const audioURL = URL.createObjectURL(blob);
+    aiVoice.src = audioURL;
+
+    // Detiene los otros audios cuando esté lista la voz IA
+    aiVoice.oncanplaythrough = () => {
+      loopAudio.pause();
+      punkAudio.pause();
+      loopAudio.currentTime = 0;
+      punkAudio.currentTime = 0;
+      aiVoice.play();
+    };
+  } catch (error) {
+    console.error('Error al reproducir bienvenida de IA:', error);
+  }
 });
