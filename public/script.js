@@ -1,37 +1,33 @@
-const loop = new Audio('loopIntro.mp3');
+const audioElement = new Audio();
+const loopIntro = new Audio('loopIntro.mp3');
 const punk = new Audio('punk.mp3');
 
-const playButton = document.getElementById('playButton');
-let iaAudio = null;
+// Para que ambos audios puedan reproducirse automáticamente
+loopIntro.loop = true;
+punk.loop = false;
 
-playButton.addEventListener('click', async () => {
-  playButton.disabled = true;
+document.getElementById('playButton').addEventListener('click', () => {
+  // Inicia loop introductorio
+  loopIntro.play();
 
-  // Inicia el loop de bienvenida
-  loop.loop = true;
-  loop.volume = 0.2;
-  await loop.play();
+  // Fetch a la IA para generar bienvenida
+  fetch('/api/bienvenida')
+    .then(response => response.json())
+    .then(data => {
+      // Detener ambos audios cuando llega la voz de la IA
+      loopIntro.pause();
+      loopIntro.currentTime = 0;
+      punk.pause();
+      punk.currentTime = 0;
 
-  try {
-    // Llama a la API que genera la voz IA
-    const response = await fetch('/api/bienvenida');
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
+      // Reproduce la bienvenida generada por Eleven Labs
+      audioElement.src = data.audioUrl;
+      audioElement.play();
+    })
+    .catch(err => {
+      console.error('Error:', err);
+    });
 
-    // Detiene el loop una vez que la IA responde
-    loop.pause();
-
-    iaAudio = new Audio(audioUrl);
-    iaAudio.play();
-
-    // Cuando la IA termina de hablar, inicia la música
-    iaAudio.onended = () => {
-      punk.volume = 0.5;
-      punk.play();
-    };
-  } catch (err) {
-    console.error('Error al obtener audio IA:', err);
-    loop.pause();
-    playButton.disabled = false;
-  }
+  // Mientras espera la respuesta, empieza la música punk
+  punk.play();
 });
